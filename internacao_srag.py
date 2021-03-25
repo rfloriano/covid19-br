@@ -334,7 +334,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-s", "--skip", help="Skip downloaded files",  action="store_true")
-    parser.add_argument("-p", "--processes", help="How many processes should be used to process file", type=int, default=1)
     parser.add_argument("-l", "--lines", help="How many lines should be writed at time", type=int, default=1000)
     args = parser.parse_args()
 
@@ -342,49 +341,17 @@ def main():
     output_filename = OUTPUT_PATH / "internacao_srag-batch.csv.gz"
     writer = CsvLazyDictWriter(HospitalizationData.fieldnames(), output_filename)
 
-    # Create queues
-    task_queue = Queue()
-    done_queue = Queue()
-
-    # Start worker processes
-    for i in range(args.processes):
-        Process(target=worker, args=(task_queue, done_queue)).start()
-
     for filename in filenames:
         with rows.utils.open_compressed(filename, encoding="utf-8", buffering=100000) as fobj:
             reader = csv.DictReader(fobj, delimiter=";")
-            count = 0
-            # lines = []
+            lines = []
             for row in tqdm(reader, desc=f"Converting {filename.name}"):
-                count += 1
-                task_queue.put(row)
-                # if count >= args.lines:
-                #     for i in range(count):
-                #         line = done_queue.get()
-                #         lines.append(line)
-                #     writer.writerows(lines)
-                #     lines = []
-                #     count = 0
-            # if lines:
-            #     writer.writerows(lines)
-
-    lines = []
-    for i in tqdm(range(count), desc=f"Writing {output_filename}"):
-        lines.append(done_queue.get())
-        if len(lines) >= args.lines:
-            writer.writerows(lines)
-    if lines:
-        writer.writerows(lines)
-
-    for i in range(args.processes):
-        task_queue.put('STOP')
-
-        #     # parsed_data = convert_row(row)
-        #     batch_rows.append(parsed_data)
-        #     if len(batch_rows) >= args.lines:
-        #         print('--->', len(batch_rows))
-        # if batch_rows:
-        #     writer.writerows(batch_rows)
+                lines.append(convert_row(row))
+                if len(lines) >= args.lines:
+                    writer.writerows(lines)
+                    lines = []
+            if lines:
+                writer.writerows(lines)
 
 
 if __name__ == "__main__":
