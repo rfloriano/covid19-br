@@ -61,7 +61,7 @@ def calculate_age_range(value):
         return None
 
     value = parse_int(value)
-    if not value:
+    if not value and value != 0:
         return None
 
     for start, end in AGE_RANGES:
