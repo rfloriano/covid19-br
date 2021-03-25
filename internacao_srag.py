@@ -75,22 +75,34 @@ def convert_row(row):
 
     diff_days = None
     if row["DT_EVOLUCA"] and row["DT_INTERNA"]:
-        dt_evo = PtBrDateField.deserialize(row["DT_EVOLUCA"])
-        dt_int = PtBrDateField.deserialize(row["DT_INTERNA"])
-        diff_days = (dt_evo - dt_int).days
+        dt_evoluca = PtBrDateField.deserialize(row["DT_EVOLUCA"])
+        dt_interna = PtBrDateField.deserialize(row["DT_INTERNA"])
+        diff_days = (dt_evoluca - dt_interna).days
 
     row["DIAS_INTERNACAO_A_OBITO_SRAG"] = None
     row["DIAS_INTERNACAO_A_OBITO_OUTRAS"] = None
     row["DIAS_INTERNACAO_A_ALTA"] = None
+    row["CURA"] = False
+    row["OBITO"] = False
 
-    if row["EVOLUCAO"] == "2":
+    if row["EVOLUCAO"] == "1":
+        row["CURA"] = True
+        row["DIAS_INTERNACAO_A_ALTA"] = diff_days
+    elif row["EVOLUCAO"] == "2":
+        row["OBITO"] = True
         row["DIAS_INTERNACAO_A_OBITO_SRAG"] = diff_days
     elif row["EVOLUCAO"] == "3":
+        row["OBITO"] = True
         row["DIAS_INTERNACAO_A_OBITO_OUTRAS"] = diff_days
-    elif row["EVOLUCAO"] == "1":
-        row["DIAS_INTERNACAO_A_ALTA"] = diff_days
 
-    row["FAIXA_ETARIA"] = calculate_age_range(row["NU_IDADE_N"])
+    age = row["NU_IDADE_N"]
+    if row["TP_IDADE"] in ['dia', 'mês']:
+        age = 0
+    if row["DT_NOTIFIC"] and row["DT_NASC"]:
+        dt_notific = PtBrDateField.deserialize(row["DT_NOTIFIC"])
+        dt_nasc = PtBrDateField.deserialize(row["DT_NASC"])
+        age = int((dt_notific - dt_nasc).days/365.25)
+    row["FAIXA_ETARIA"] = calculate_age_range(age)
 
     # TODO: adicionar coluna ano e semana epidemiológica
     # TODO: corrigir RuntimeError: ERROR:  invalid input syntax for integer: "20-1"
